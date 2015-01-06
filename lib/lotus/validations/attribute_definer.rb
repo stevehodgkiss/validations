@@ -203,9 +203,15 @@ module Lotus
         #
         #   signup = Signup.new(password: 'short')
         #   signup.valid? # => false
-        def attribute(name, options = {})
-          define_attribute(name, options)
-          validates(name, options)
+
+        def attribute(name, options = {}, &block)
+          if block_given?
+            nested_class = build_validation_class(&block)
+            define_attribute(name, options.merge(type: nested_class))
+          else
+            define_attribute(name, options)
+            validates(name, options)
+          end
         end
 
         private
@@ -235,11 +241,22 @@ module Lotus
         # @since x.x.x
         # @api private
         def define_coerced_writer(name, type)
-          class_eval %{
-            def #{ name }=(value)
-              @#{ name } = Lotus::Validations::Coercions.coerce(#{ type.name }, value)
-            end
-          }
+          define_method("#{ name }=") do |value|
+            instance_variable_set("@#{ name }", Lotus::Validations::Coercions.coerce(type, value))
+          end
+        end
+
+        # Creates a validation class and configures it with the
+        # given block.
+        #
+        # @since x.x.x
+        # @api private
+        def build_validation_class(&block)
+          kls = Class.new do
+            include Lotus::Validations
+          end
+          kls.class_eval(&block)
+          kls
         end
       end
 
