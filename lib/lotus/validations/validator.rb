@@ -5,26 +5,18 @@ module Lotus
     # @since x.x.x
     # @api private
     class Validator
-      def initialize(validation_set, attributes)
-        @validation_set = validation_set
-        @attributes = attributes
+      def initialize(object)
+        @object = object
+        @validation_set = object.send(:defined_validations)
+        @attributes = object.send(:read_attributes)
+        @errors = @object.errors
       end
 
       # @since x.x.x
       # @api private
       def validate
-        Errors.new.tap do |errors|
-          @validation_set.each do |name, validations|
-            value = @attributes[name]
-            value = @attributes[name.to_s] if value.nil?
-
-            if value.respond_to?(:validate)
-              errors.add_nested name, value.validate
-            else
-              attribute = Attribute.new(@attributes, name, value, validations)
-              errors.add name, *attribute.validate
-            end
-          end
+        @validation_set.each_validation do |name, attribute|
+          attribute.validate(@object, @errors)
         end
       end
     end

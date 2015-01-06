@@ -204,8 +204,9 @@ module Lotus
     end
 
     def validate
-      validator = Validator.new(defined_validations, read_attributes)
-      @errors = validator.validate
+      errors.clear
+
+      Validator.new(self).validate
     end
 
     # Iterates thru the defined attributes and their values

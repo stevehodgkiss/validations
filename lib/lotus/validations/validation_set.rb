@@ -16,7 +16,8 @@ module Lotus
         :inclusion,
         :exclusion,
         :confirmation,
-        :size
+        :size,
+        :nested
       ].freeze
 
       # @since x.x.x
@@ -43,6 +44,14 @@ module Lotus
       # @api private
       def each_key(&blk)
         @validations.each_key(&blk)
+      end
+
+      def each_validation
+        @validations.each do |attribute_name, validations|
+          validations.each do |validation_name, options|
+            yield attribute_name, Attribute.new(attribute_name, validation_name, options)
+          end
+        end
       end
 
       private

@@ -34,20 +34,20 @@ module Lotus
       #
       # @since 0.2.0
       # @api private
-      def initialize(attributes, name, value, validations)
-        @attributes  = attributes
-        @name        = name
-        @value       = value
-        @validations = validations
-        @errors      = []
+      def initialize(attribute_name, validation_name, options)
+        @attribute_name = attribute_name
+        @validation_name = validation_name
+        @validator = options
       end
 
       # @api private
       # @since 0.2.0
-      def validate
-        _with_cleared_errors do
-          _run_validations
-        end
+      def validate(object, errors)
+        @object = object
+        @errors = errors
+        @value = object.public_send(@attribute_name)
+
+        send(@validation_name)
       end
 
       # @api private
@@ -67,7 +67,7 @@ module Lotus
       # @since 0.2.0
       # @api private
       def presence
-        _validate(__method__) { !blank_value? }
+        _validate { !blank_value? }
       end
 
       # Validates acceptance of the value.
@@ -83,7 +83,7 @@ module Lotus
       # @since 0.2.0
       # @api private
       def acceptance
-        _validate(__method__) { Lotus::Utils::Kernel.Boolean(@value) }
+        _validate { Lotus::Utils::Kernel.Boolean(@value) }
       end
 
       # Validates format of the value.
@@ -96,7 +96,8 @@ module Lotus
       # @since 0.2.0
       # @api private
       def format
-        _validate(__method__) {|matcher| @value.to_s.match(matcher) }
+        return if skip?
+        _validate {|matcher| @value.to_s.match(matcher) }
       end
 
       # Validates inclusion of the value in the defined collection.
@@ -108,7 +109,10 @@ module Lotus
       # @since 0.2.0
       # @api private
       def inclusion
-        _validate(__method__) {|collection| collection.include?(value) }
+        return if skip?
+        _validate { |collection|
+          collection.include?(value)
+        }
       end
 
       # Validates exclusion of the value in the defined collection.
@@ -120,7 +124,10 @@ module Lotus
       # @since 0.2.0
       # @api private
       def exclusion
-        _validate(__method__) {|collection| !collection.include?(value) }
+        return if skip?
+        _validate { |collection|
+         !collection.include?(value)
+        }
       end
 
       # Validates confirmation of the value with another corresponding value.
@@ -134,8 +141,15 @@ module Lotus
       # @since 0.2.0
       # @api private
       def confirmation
-        _validate(__method__) do
-          _attribute == _attribute(CONFIRMATION_TEMPLATE % { name: @name })
+        return if skip?
+        _validate do
+          _attribute == _attribute(CONFIRMATION_TEMPLATE % { name: @attribute_name })
+        end
+      end
+
+      def nested
+        unless value.valid?
+          @errors.add_nested(@attribute_name, value.errors)
         end
       end
 
@@ -171,14 +185,15 @@ module Lotus
       # @since 0.2.0
       # @api private
       def size
-        _validate(__method__) do |validator|
-          case validator
+        return if skip?
+        _validate do
+          case @validator
           when Numeric, ->(v) { v.respond_to?(:to_int) }
-            value.size == validator.to_int
+            value.size == @validator.to_int
           when Range
-            validator.include?(value.size)
+            @validator.include?(value.size)
           else
-            raise ArgumentError.new("Size validator must be a number or a range, it was: #{ validator }")
+            raise ArgumentError.new("Size validator must be a number or a range, it was: #{ @validator }")
           end
         end
       end
@@ -216,29 +231,21 @@ module Lotus
         confirmation
       end
 
-      # @api private
-      # @since 0.2.0
-      def _with_cleared_errors
-        @errors.clear
-        yield
-        @errors.dup.tap {|_| @errors.clear }
-      end
-
       # Reads an attribute from the validator.
       #
       # @since 0.2.0
       # @api private
-      def _attribute(name = @name)
-        @attributes[name.to_sym]
+      def _attribute(name = @attribute_name)
+        @object.public_send(name)
       end
 
       # Run a single validation and collects the results.
       #
       # @since 0.2.0
       # @api private
-      def _validate(validation)
-        if (validator = @validations[validation]) && !(yield validator)
-          @errors.push(Error.new(@name, validation, @validations.fetch(validation), @value))
+      def _validate
+        if !(yield @validator)
+          @errors.add(@attribute_name, Error.new(@attribute_name, @validation_name, @validator, @value))
         end
       end
     end
