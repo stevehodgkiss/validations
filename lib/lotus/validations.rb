@@ -1,10 +1,21 @@
 require 'lotus/utils/hash'
 require 'lotus/validations/version'
+
+require 'lotus/validations/attribute'
+
+require 'lotus/validations/validators/presence_validator'
+require 'lotus/validations/validators/acceptance_validator'
+require 'lotus/validations/validators/format_validator'
+require 'lotus/validations/validators/inclusion_validator'
+require 'lotus/validations/validators/exclusion_validator'
+require 'lotus/validations/validators/confirmation_validator'
+require 'lotus/validations/validators/size_validator'
+require 'lotus/validations/validators/nested_validator'
+
 require 'lotus/validations/blank_value_checker'
 require 'lotus/validations/attribute_definer'
 require 'lotus/validations/validation_set'
 require 'lotus/validations/validator'
-require 'lotus/validations/attribute'
 require 'lotus/validations/errors'
 
 module Lotus

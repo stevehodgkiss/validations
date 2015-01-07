@@ -9,16 +9,16 @@ module Lotus
       #
       # @since x.x.x
       # @api private
-      VALIDATIONS = [
-        :presence,
-        :acceptance,
-        :format,
-        :inclusion,
-        :exclusion,
-        :confirmation,
-        :size,
-        :nested
-      ].freeze
+      VALIDATIONS = {
+        presence: Validators::PresenceValidator,
+        acceptance: Validators::AcceptanceValidator,
+        format: Validators::FormatValidator,
+        inclusion: Validators::InclusionValidator,
+        exclusion: Validators::ExclusionValidator,
+        confirmation: Validators::ConfirmationValidator,
+        size: Validators::SizeValidator,
+        nested: Validators::NestedValidator
+      }.freeze
 
       # @since x.x.x
       # @api private
@@ -49,7 +49,8 @@ module Lotus
       def each_validation
         @validations.each do |attribute_name, validations|
           validations.each do |validation_name, options|
-            yield attribute_name, Attribute.new(attribute_name, validation_name, options)
+            validator = VALIDATIONS.fetch(validation_name).new(attribute_name, options)
+            yield attribute_name, validator
           end
         end
       end
@@ -66,7 +67,7 @@ module Lotus
       # @since x.x.x
       # @api private
       def validate_options!(name, options)
-        if (unknown = (options.keys - VALIDATIONS)) && unknown.any?
+        if (unknown = (options.keys - VALIDATIONS.keys)) && unknown.any?
           raise ArgumentError.new(%(Unknown validation(s): #{ unknown.join ', ' } for "#{ name }" attribute))
         end
 
