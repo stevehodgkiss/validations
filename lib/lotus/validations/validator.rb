@@ -16,7 +16,7 @@ module Lotus
       # @api private
       def validate
         @validation_set.each_validation do |name, attribute|
-          attribute.validate(@object, @errors)
+          attribute.validate(@object, @object.public_send(name), @errors)
         end
       end
     end
